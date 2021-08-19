@@ -148,3 +148,34 @@ export function isOk<T, E>(val: Result<T, E>): val is ResOk<T> {
 export function isErr<T, E>(val: Result<T, E>): val is ResErr<T, E> {
   return val.isErr();
 }
+
+type UnwrapPromiseType<T> =
+	T extends (...args: any) => Promise<infer U> ? U :
+	T extends (...args: any) => infer U ? U :
+	T
+
+// Wrap any async function with recoverAsync to replace `throw` `catch` semantics
+// with the `Result<T, E>` monadic behavior.
+export function recoverAsync<F extends (...args: any) => Promise<any>>(func: F) {
+	return async (...args: Parameters<F>): Promise<Result<UnwrapPromiseType<F>, Error>> => {
+		try {
+			const value = await func(...args as any)
+			return Ok(value);
+		} catch(err) {
+			return Err(err);
+		}
+	}
+}
+
+// Wrap any function with recover to replace `throw` `catch` semantics
+// with the `Result<T, E>` monadic behavior.
+export function recover<F extends (...args: any) => any>(func: F) {
+	return (...args: Parameters<F>): Result<ReturnType<F>, Error> => {
+		try {
+			const value = func(...args as any)
+			return Ok(value);
+		} catch(err) {
+			return Err(err);
+		}
+	}
+}
